@@ -5,12 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
+	"text/template"
 )
 
 type Fortune struct {
 	Result string `json:"fortune"`
+	Month  string
+	Day    string
 }
 
 func apiHandler(w http.ResponseWriter, r *http.Request) {
@@ -82,4 +86,46 @@ func getFortune(date string) (string, error) {
 	}
 
 	return fortune, nil
+}
+
+func resultHandler(w http.ResponseWriter, r *http.Request) {
+	month := r.FormValue("month")
+	day := r.FormValue("day")
+
+	v := url.Values{"month": {month}, "day": {day}}
+	resp, err := http.PostForm("http://localhost:8080/api", v)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	defer resp.Body.Close()
+
+	var f Fortune
+	decoder := json.NewDecoder(resp.Body)
+	if err := decoder.Decode(&f); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	f.Month = month
+	f.Day = day
+
+	t, err := template.ParseFiles("views/result.html")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	t.Execute(w, f)
+}
+
+func indexHandler(w http.ResponseWriter, r *http.Request) {
+	t, err := template.ParseFiles("views/index.html")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	t.Execute(w, nil)
 }
