@@ -6,9 +6,9 @@ import (
 )
 
 func main() {
-	http.HandleFunc("/", indexHandler)
-	http.HandleFunc("/result", resultHandler)
-	http.HandleFunc("/api", apiHandler)
+	http.HandleFunc("/", IndexHandler)
+	http.HandleFunc("/result", ResultHandler)
+	http.HandleFunc("/api", ApiHandler)
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
