@@ -4,14 +4,20 @@ import (
 	"database/sql"
 
 	"github.com/ren-kt/uranai_api/fortune"
+
+	_ "modernc.org/sqlite"
 )
 
 type MyDb struct {
 	db *sql.DB
 }
 
-func NewMyDb(db *sql.DB) *MyDb {
-	return &MyDb{db: db}
+func NewMyDb() (*MyDb, error) {
+	db, err := sql.Open("sqlite", "fortune.db")
+	if err != nil {
+		return nil, err
+	}
+	return &MyDb{db: db}, nil
 }
 
 func (md *MyDb) CreateTable() error {
@@ -27,6 +33,19 @@ func (md *MyDb) CreateTable() error {
 	}
 
 	return nil
+}
+
+func (md *MyDb) GetText(result string) (string, error) {
+	const sqlStr = `SELECT fortunes.text FROM fortunes ORDER BY RANDOM() limit 1`
+	row := md.db.QueryRow(sqlStr, result)
+
+	var fortune fortune.Fortune
+	err := row.Scan(&fortune.Text)
+	if err != nil {
+		return "", err
+	}
+
+	return fortune.Text, nil
 }
 
 func (md *MyDb) GetFortune(id int) (*fortune.Fortune, error) {

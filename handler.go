@@ -107,7 +107,7 @@ func (hs Handlers) ResultHandler(w http.ResponseWriter, r *http.Request) {
 	t.Execute(w, f)
 }
 
-func ApiHandler(w http.ResponseWriter, r *http.Request) {
+func (hs Handlers) ApiHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 	var buf bytes.Buffer
@@ -143,10 +143,13 @@ func ApiHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO：未実装
-	Text := "hoge fuga"
+	text, err := hs.md.GetText(result)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-	fortune := fortune.Fortune{Ok: true, Result: result, Text: Text}
+	fortune := fortune.Fortune{Ok: true, Result: result, Text: text}
 
 	if err := encoder.Encode(fortune); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

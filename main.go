@@ -1,19 +1,15 @@
 package main
 
 import (
-	"database/sql"
 	"log"
 	"net/http"
-
-	_ "modernc.org/sqlite"
 )
 
 func main() {
-	db, err := sql.Open("sqlite", "fortune.db")
+	md, err := NewMyDb()
 	if err != nil {
 		log.Fatal(err)
 	}
-	md := NewMyDb(db)
 
 	if err := md.CreateTable(); err != nil {
 		log.Fatal(err)
@@ -26,7 +22,7 @@ func main() {
 
 	http.HandleFunc("/", IndexHandler)
 	http.HandleFunc("/result", hs.ResultHandler)
-	http.HandleFunc("/api", ApiHandler)
+	http.HandleFunc("/api", hs.ApiHandler)
 	http.HandleFunc("/admin", hs.AdminIndexHandler)
 	http.HandleFunc("/admin/create", hs.AdminCreateHandler)
 	http.HandleFunc("/admin/edit/", hs.AdminEditHandler)
