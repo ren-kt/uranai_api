@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -144,7 +145,15 @@ func (hs Handlers) ApiHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	text, err := hs.db.GetText(result)
-	if err != nil {
+	if err == sql.ErrNoRows {
+		fortune := fortune.ApiError{Ok: false, Err: "textが見つかりません"}
+		if err := encoder.Encode(fortune); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		http.Error(w, buf.String(), http.StatusBadRequest)
+		return
+	} else if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

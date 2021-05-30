@@ -45,7 +45,7 @@ func (sqlite *Sqlite) CreateTable() error {
 }
 
 func (sqlite *Sqlite) GetText(result string) (string, error) {
-	const sqlStr = `SELECT fortunes.text FROM fortunes ORDER BY RANDOM() limit 1`
+	const sqlStr = `SELECT fortunes.text FROM fortunes where result = ? ORDER BY RANDOM() limit 1`
 	row := sqlite.db.QueryRow(sqlStr, result)
 
 	var fortune fortune.Fortune
