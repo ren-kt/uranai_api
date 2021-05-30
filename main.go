@@ -19,7 +19,7 @@ func main() {
 
 	hs := NewHandlers(sqlite, api)
 
-	http.HandleFunc("/", IndexHandler)
+	http.HandleFunc("/", hs.IndexHandler)
 	http.HandleFunc("/result", hs.ResultHandler)
 	http.HandleFunc("/api", hs.ApiHandler)
 	http.HandleFunc("/admin", hs.AdminIndexHandler)

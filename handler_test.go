@@ -23,6 +23,38 @@ func (d *TestDB) GetText(result string) (string, error) {
 	return "test text", nil
 }
 
+type RoundTripFunc func(req *http.Request) *http.Response
+
+func (f RoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req), nil
+}
+
+func NewTestClient(fn RoundTripFunc) *http.Client {
+	return &http.Client{
+		Transport: RoundTripFunc(fn),
+	}
+}
+
+func client(t *testing.T, day, month int) *http.Client {
+	t.Helper()
+
+	result, _ := fortune.GetFortune(month, day)
+	body := fortune.Fortune{Result: result}
+
+	b, err := json.Marshal(body)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return NewTestClient(func(req *http.Request) *http.Response {
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewBuffer(b)),
+			Header:     make(http.Header),
+		}
+	})
+}
+
 func TestIndexHandler(t *testing.T) {
 	cases := map[string]struct {
 		statusCode int
@@ -33,7 +65,8 @@ func TestIndexHandler(t *testing.T) {
 	for name, tt := range cases {
 		tt := tt
 		t.Run(name, func(t *testing.T) {
-			ts := httptest.NewServer(http.HandlerFunc(IndexHandler))
+			hs := NewHandlers(nil, nil)
+			ts := httptest.NewServer(http.HandlerFunc(hs.IndexHandler))
 			defer ts.Close()
 
 			resp, err := http.Get(ts.URL)
@@ -44,11 +77,6 @@ func TestIndexHandler(t *testing.T) {
 
 			if resp.StatusCode != tt.statusCode {
 				t.Errorf("unexpected status code: %d", resp.StatusCode)
-			}
-
-			_, err = ioutil.ReadAll(resp.Body)
-			if err != nil {
-				t.Errorf("unexpected error %s", err)
 			}
 		})
 	}
@@ -142,36 +170,4 @@ func TestApiHandler(t *testing.T) {
 			}
 		})
 	}
-}
-
-type RoundTripFunc func(req *http.Request) *http.Response
-
-func (f RoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
-	return f(req), nil
-}
-
-func NewTestClient(fn RoundTripFunc) *http.Client {
-	return &http.Client{
-		Transport: RoundTripFunc(fn),
-	}
-}
-
-func client(t *testing.T, day, month int) *http.Client {
-	t.Helper()
-
-	result, _ := fortune.GetFortune(month, day)
-	body := fortune.Fortune{Result: result}
-
-	b, err := json.Marshal(body)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	return NewTestClient(func(req *http.Request) *http.Response {
-		return &http.Response{
-			StatusCode: http.StatusOK,
-			Body:       io.NopCloser(bytes.NewBuffer(b)),
-			Header:     make(http.Header),
-		}
-	})
 }

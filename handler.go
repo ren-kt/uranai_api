@@ -11,6 +11,8 @@ import (
 	"github.com/ren-kt/uranai_api/fortune"
 )
 
+const baseURL = "http://localhost:8080"
+
 type Api struct {
 	client *http.Client
 }
@@ -21,8 +23,6 @@ func NewApi(client *http.Client) *Api {
 	}
 	return api
 }
-
-const baseURL = "http://localhost:8080"
 
 func (api *Api) Get(month, day int) (*http.Response, error) {
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/api?month=%d&day=%d", baseURL, month, day), nil)
@@ -58,7 +58,7 @@ func NewHandlers(db DB, api *Api) *Handlers {
 	return &Handlers{db: db, api: api}
 }
 
-func IndexHandler(w http.ResponseWriter, r *http.Request) {
+func (hs Handlers) IndexHandler(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("views/index.html")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
