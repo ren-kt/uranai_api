@@ -1,12 +1,18 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/ren-kt/uranai_api/fortune"
 )
 
 func TestIndexHandler(t *testing.T) {
@@ -42,23 +48,26 @@ func TestIndexHandler(t *testing.T) {
 
 func TestResultHandler(t *testing.T) {
 	cases := map[string]struct {
-		month      string
-		day        string
+		month      int
+		day        int
 		statusCode int
 		expected   string
 	}{
-		"success":             {month: "1", day: "1", statusCode: http.StatusOK, expected: "大吉"},
-		"no specifying month": {month: "1", day: "", statusCode: http.StatusBadRequest, expected: "パラメータが不正です。" + "\n"},
-		"no specifying day":   {month: "", day: "1", statusCode: http.StatusBadRequest, expected: "パラメータが不正です。" + "\n"},
+		"success":             {month: 1, day: 1, statusCode: http.StatusOK, expected: "大吉"},
+		"no specifying month": {month: 1, day: 0, statusCode: http.StatusBadRequest, expected: "日が不正です" + "\n"},
+		"no specifying day":   {month: 0, day: 1, statusCode: http.StatusBadRequest, expected: "月が不正です" + "\n"},
 	}
 
 	for name, tt := range cases {
 		tt := tt
 		t.Run(name, func(t *testing.T) {
-			ts := httptest.NewServer(http.HandlerFunc(ResultHandler))
+			api := NewApi(client(t, tt.month, tt.day))
+			hs := NewHandlers(nil, api)
+
+			ts := httptest.NewServer(http.HandlerFunc(hs.ResultHandler))
 			defer ts.Close()
 
-			v := url.Values{"month": {tt.month}, "day": {tt.day}}
+			v := url.Values{"month": {strconv.Itoa(tt.month)}, "day": {strconv.Itoa(tt.day)}}
 
 			resp, err := http.PostForm(ts.URL, v)
 			if err != nil {
@@ -84,14 +93,14 @@ func TestResultHandler(t *testing.T) {
 
 func TestApiHandler(t *testing.T) {
 	cases := map[string]struct {
-		month      string
-		day        string
+		month      int
+		day        int
 		statusCode int
 		expected   string
 	}{
-		"success":             {month: "1", day: "1", statusCode: http.StatusOK, expected: `{"fortune":"大吉","month":"1","day":"1"}` + "\n"},
-		"no specifying month": {month: "1", day: "", statusCode: http.StatusBadRequest, expected: "日が指定されていません" + "\n"},
-		"no specifying day":   {month: "", day: "1", statusCode: http.StatusBadRequest, expected: "月が指定されていません" + "\n"},
+		"success":             {month: 1, day: 1, statusCode: http.StatusOK, expected: `{"id":0,"Resut":"大吉","Text":"","month":1,"day":1}` + "\n"},
+		"no specifying month": {month: 1, day: 0, statusCode: http.StatusBadRequest, expected: "日が不正です" + "\n"},
+		"no specifying day":   {month: 0, day: 1, statusCode: http.StatusBadRequest, expected: "月が不正です" + "\n"},
 	}
 
 	for name, tt := range cases {
@@ -100,7 +109,7 @@ func TestApiHandler(t *testing.T) {
 			ts := httptest.NewServer(http.HandlerFunc(ApiHandler))
 			defer ts.Close()
 
-			v := url.Values{"month": {tt.month}, "day": {tt.day}}
+			v := url.Values{"month": {strconv.Itoa(tt.month)}, "day": {strconv.Itoa(tt.day)}}
 
 			resp, err := http.PostForm(ts.URL, v)
 			if err != nil {
@@ -122,4 +131,36 @@ func TestApiHandler(t *testing.T) {
 			}
 		})
 	}
+}
+
+type RoundTripFunc func(req *http.Request) *http.Response
+
+func (f RoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req), nil
+}
+
+func NewTestClient(fn RoundTripFunc) *http.Client {
+	return &http.Client{
+		Transport: RoundTripFunc(fn),
+	}
+}
+
+func client(t *testing.T, day, month int) *http.Client {
+	t.Helper()
+
+	result, _ := fortune.GetFortune(month, day)
+	body := fortune.Fortune{Result: result}
+
+	b, err := json.Marshal(body)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return NewTestClient(func(req *http.Request) *http.Response {
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewBuffer(b)),
+			Header:     make(http.Header),
+		}
+	})
 }
