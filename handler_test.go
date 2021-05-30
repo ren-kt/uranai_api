@@ -15,6 +15,14 @@ import (
 	"github.com/ren-kt/uranai_api/fortune"
 )
 
+type TestDB struct {
+	DB
+}
+
+func (d *TestDB) GetText(result string) (string, error) {
+	return "test text", nil
+}
+
 func TestIndexHandler(t *testing.T) {
 	cases := map[string]struct {
 		statusCode int
@@ -98,7 +106,7 @@ func TestApiHandler(t *testing.T) {
 		statusCode int
 		expected   string
 	}{
-		"success":             {month: 1, day: 1, statusCode: http.StatusOK, expected: `{"ok":true,"resut":"大吉","text":"hoge fuga"}` + "\n"},
+		"success":             {month: 1, day: 1, statusCode: http.StatusOK, expected: `{"ok":true,"resut":"大吉","text":"test text"}` + "\n"},
 		"no specifying month": {month: 1, day: 0, statusCode: http.StatusBadRequest, expected: `{"ok":false,"error":"日が不正なパラメータです"}` + "\n\n"},
 		"no specifying day":   {month: 0, day: 1, statusCode: http.StatusBadRequest, expected: `{"ok":false,"error":"月が不正なパラメータです"}` + "\n\n"},
 	}
@@ -106,7 +114,10 @@ func TestApiHandler(t *testing.T) {
 	for name, tt := range cases {
 		tt := tt
 		t.Run(name, func(t *testing.T) {
-			ts := httptest.NewServer(http.HandlerFunc(ApiHandler))
+			td := &TestDB{}
+			hs := NewHandlers(td, nil)
+
+			ts := httptest.NewServer(http.HandlerFunc(hs.ApiHandler))
 			defer ts.Close()
 
 			v := url.Values{"month": {strconv.Itoa(tt.month)}, "day": {strconv.Itoa(tt.day)}}
