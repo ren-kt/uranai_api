@@ -17,6 +17,7 @@ func TestGetFortune(t *testing.T) {
 		"1013-中吉":        {month: 10, day: 13, expected: "中吉", wantErr: false},
 		"123-吉":          {month: 1, day: 23, expected: "吉", wantErr: false},
 		"1231-凶":         {month: 12, day: 31, expected: "凶", wantErr: false},
+		"911-凶":         {month: 9, day: 11, expected: "大吉", wantErr: false},
 		"empty argument": {month: 0, day: 0, expected: "", wantErr: true},
 	}
 
