@@ -110,16 +110,31 @@ func (hs Handlers) ResultHandler(w http.ResponseWriter, r *http.Request) {
 func ApiHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
+	var buf bytes.Buffer
+	encoder := json.NewEncoder(&buf)
+
 	month, err := strconv.Atoi(r.FormValue("month"))
 	if err != nil || month == 0 {
-		http.Error(w, "月が不正です", http.StatusBadRequest)
+		fortune := fortune.ApiError{Ok: false, Err: "月が不正なパラメータです"}
+		if err := encoder.Encode(fortune); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		http.Error(w, buf.String(), http.StatusBadRequest)
 		return
 	}
 
 	day, err := strconv.Atoi(r.FormValue("day"))
 	if err != nil || day == 0 {
-		http.Error(w, "日が不正です", http.StatusBadRequest)
-		return
+		if err != nil || day == 0 {
+			fortune := fortune.ApiError{Ok: false, Err: "日が不正なパラメータです"}
+			if err := encoder.Encode(fortune); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			http.Error(w, buf.String(), http.StatusBadRequest)
+			return
+		}
 	}
 
 	result, err := fortune.GetFortune(month, day)
@@ -128,10 +143,11 @@ func ApiHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fortune := fortune.Fortune{Result: result, Month: month, Day: day}
+	// TODO：未実装
+	Text := "hoge fuga"
 
-	var buf bytes.Buffer
-	encoder := json.NewEncoder(&buf)
+	fortune := fortune.Fortune{Ok: true, Result: result, Text: Text}
+
 	if err := encoder.Encode(fortune); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

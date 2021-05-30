@@ -98,9 +98,9 @@ func TestApiHandler(t *testing.T) {
 		statusCode int
 		expected   string
 	}{
-		"success":             {month: 1, day: 1, statusCode: http.StatusOK, expected: `{"id":0,"Resut":"大吉","Text":"","month":1,"day":1}` + "\n"},
-		"no specifying month": {month: 1, day: 0, statusCode: http.StatusBadRequest, expected: "日が不正です" + "\n"},
-		"no specifying day":   {month: 0, day: 1, statusCode: http.StatusBadRequest, expected: "月が不正です" + "\n"},
+		"success":             {month: 1, day: 1, statusCode: http.StatusOK, expected: `{"ok":true,"resut":"大吉","text":"hoge fuga"}` + "\n"},
+		"no specifying month": {month: 1, day: 0, statusCode: http.StatusBadRequest, expected: `{"ok":false,"error":"日が不正なパラメータです"}` + "\n\n"},
+		"no specifying day":   {month: 0, day: 1, statusCode: http.StatusBadRequest, expected: `{"ok":false,"error":"月が不正なパラメータです"}` + "\n\n"},
 	}
 
 	for name, tt := range cases {

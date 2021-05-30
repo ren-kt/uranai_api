@@ -7,11 +7,17 @@ import (
 )
 
 type Fortune struct {
-	Id     int    `json:"id"`
-	Result string `json:"Resut"`
-	Text   string `json:"Text"`
-	Month  int    `json:"month"`
-	Day    int    `json:"day"`
+	Id     int    `json:"-"`
+	Ok     bool   `json:"ok"`
+	Result string `json:"resut"`
+	Text   string `json:"text"`
+	Month  int    `json:"-"`
+	Day    int    `json:"-"`
+}
+
+type ApiError struct {
+	Ok  bool   `json:"ok"`
+	Err string `json:"error"`
 }
 
 func GetFortune(month, day int) (string, error) {
