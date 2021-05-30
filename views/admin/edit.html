@@ -1,0 +1,41 @@
+<html>
+	<head>
+        <title>admin</title>
+    </head>
+	<body>
+		<h2>編集</h2>
+			{{ if . }}
+				<form method="post" action="/admin/update/{{ .Id }}">
+					<table border="1">
+						<tr>
+							<th>
+								ID
+							</th>
+							<th>
+								Result
+							</th>
+							<th>
+								Text
+							</th>
+						</tr>
+						<tr>
+							<td>
+								{{ .Id }}
+							</td>
+							<td>
+								<input name="result" type="text" value={{ .Result }}>
+							</td>
+							<td>
+								<input name="text" type="text" value={{ .Text }}>
+							</td>
+						</tr>
+					</table>
+					<input type="submit" value="保存">
+					<a href="/admin/delete/{{ .Id }}">削除</a>
+				</form>
+			{{ else }}
+				存在しません
+			{{ end }}
+			<a href="/admin">一覧</a>
+	</body>
+</html>

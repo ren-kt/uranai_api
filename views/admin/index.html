@@ -1,0 +1,39 @@
+<html>
+	<head>
+        <title>admin</title>
+    </head>
+	<body>
+		<h2>入力</h2>
+		<form method="post" action="/admin/create">
+			<label for="result">result:</label>
+			<input name="result" type="text">
+			</br>
+			<label for="text">text:</label>
+			<input name="text" type="text">
+			<br>
+			<input type="submit" value="保存">
+		</form>
+
+		<h2>一覧</h2>
+		{{ if . }}
+			<table border="1">
+				<tr>
+					<th>ID</th>
+					<th>Result</th>
+					<th>Text</th>
+					<th>hoge</th>
+				</tr>
+				{{ range . }}
+					<tr>
+						<td>{{ .Id }}</td>
+						<td>{{ .Result }}</td>
+						<td>{{ .Text }}</td>
+						<td><a href="/admin/edit/{{ .Id }}">編集</a></td>
+					</tr>
+				{{ end }}
+			</table>
+		{{ else }}
+			データがありません
+		{{ end }}
+	</body>
+</html>

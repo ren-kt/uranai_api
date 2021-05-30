@@ -1,15 +1,21 @@
 package fortune
 
 import (
-	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 )
 
-func GetFortune(date string) (string, error) {
-	if date == "" {
-		return "", errors.New("empty argument are not allowed")
-	}
+type Fortune struct {
+	Id     int    `json:"id"`
+	Result string `json:"Resut"`
+	Text   string `json:"Text"`
+	Month  int    `json:"month"`
+	Day    int    `json:"day"`
+}
+
+func GetFortune(month, day int) (string, error) {
+	date := fmt.Sprintf("%d%d", month, day)
 	var seed int
 	for _, s := range strings.Split(date, "") {
 		i, err := strconv.Atoi(s)
