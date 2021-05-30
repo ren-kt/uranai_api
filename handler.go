@@ -50,12 +50,12 @@ func (api *Api) request(req *http.Request) (*http.Response, error) {
 }
 
 type Handlers struct {
-	md  *MyDb
+	db  DB
 	api *Api
 }
 
-func NewHandlers(md *MyDb, api *Api) *Handlers {
-	return &Handlers{md: md, api: api}
+func NewHandlers(db DB, api *Api) *Handlers {
+	return &Handlers{db: db, api: api}
 }
 
 func IndexHandler(w http.ResponseWriter, r *http.Request) {
@@ -143,7 +143,7 @@ func (hs Handlers) ApiHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	text, err := hs.md.GetText(result)
+	text, err := hs.db.GetText(result)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -159,7 +159,7 @@ func (hs Handlers) ApiHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (hs *Handlers) AdminIndexHandler(w http.ResponseWriter, r *http.Request) {
-	fs, err := hs.md.GetFortuneAll()
+	fs, err := hs.db.GetFortuneAll()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -198,7 +198,7 @@ func (hs *Handlers) AdminCreateHandler(w http.ResponseWriter, r *http.Request) {
 		Text:   text,
 	}
 
-	if err := hs.md.Newfortune(f); err != nil {
+	if err := hs.db.Newfortune(f); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -213,7 +213,7 @@ func (hs *Handlers) AdminEditHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	f, err := hs.md.GetFortune(id)
+	f, err := hs.db.GetFortune(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -259,7 +259,7 @@ func (hs *Handlers) AdminUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		Text:   text,
 	}
 
-	if err := hs.md.Updatefortune(f); err != nil {
+	if err := hs.db.Updatefortune(f); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -274,7 +274,7 @@ func (hs *Handlers) AdminDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := hs.md.Deletefortune(id); err != nil {
+	if err := hs.db.Deletefortune(id); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

@@ -6,19 +6,18 @@ import (
 )
 
 func main() {
-	md, err := NewMyDb()
+	sqlite, err := NewSqlite()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if err := md.CreateTable(); err != nil {
+	if err := sqlite.CreateTable(); err != nil {
 		log.Fatal(err)
 	}
 
 	api := NewApi(http.DefaultClient)
 
-	hs := NewHandlers(md, api)
-	_ = hs
+	hs := NewHandlers(sqlite, api)
 
 	http.HandleFunc("/", IndexHandler)
 	http.HandleFunc("/result", hs.ResultHandler)
