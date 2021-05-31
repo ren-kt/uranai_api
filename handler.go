@@ -3,8 +3,10 @@ package main
 import (
 	"bytes"
 	"database/sql"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"text/template"
@@ -286,6 +288,41 @@ func (hs *Handlers) AdminDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	if err := hs.db.Deletefortune(id); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	http.Redirect(w, r, "/admin", http.StatusFound)
+}
+
+func (hs *Handlers) AdminUpladHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		code := http.StatusMethodNotAllowed
+		http.Error(w, http.StatusText(code), code)
+		return
+	}
+
+	file, _, err := r.FormFile("uploaded")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+
+	header, err := reader.Read()
+	fmt.Println(header)
+	for {
+		line, err := reader.Read()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+
+		fortune := &fortune.Fortune{Result: line[0], Text: line[1]}
+		err = hs.db.Newfortune(fortune)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}
 
 	http.Redirect(w, r, "/admin", http.StatusFound)

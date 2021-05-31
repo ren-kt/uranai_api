@@ -14,6 +14,12 @@
 			<input type="submit" value="保存">
 		</form>
 
+		<h2>CSVアップロード</h2>
+		<form method="post" enctype="multipart/form-data" action="/admin/upload">
+			<input type="file" name="uploaded" accept=".csv" required>
+			<button type="submit">送信する</button>
+		</form>
+
 		<h2>一覧</h2>
 		{{ if . }}
 			<table border="1">
@@ -21,7 +27,7 @@
 					<th>ID</th>
 					<th>Result</th>
 					<th>Text</th>
-					<th>hoge</th>
+					<th></th>
 				</tr>
 				{{ range . }}
 					<tr>
