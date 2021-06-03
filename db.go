@@ -2,9 +2,10 @@ package main
 
 import (
 	"database/sql"
+	"time"
 
 	"github.com/ren-kt/uranai_api/fortune"
-	_ "modernc.org/sqlite"
+	_ "github.com/lib/pq"
 )
 
 type DB interface {
@@ -22,16 +23,27 @@ type Sqlite struct {
 }
 
 func NewSqlite() (DB, error) {
-	db, err := sql.Open("sqlite", "fortune.db")
+	dsn := "host=postgres user=user dbname=app_db password=password sslmode=disable"
+	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		return nil, err
 	}
+
+	err = db.Ping()
+	if err != nil {
+		return nil, err
+	}
+
+	db.SetMaxOpenConns(10)
+	db.SetConnMaxIdleTime(10 * time.Second)
+	db.SetConnMaxLifetime(10 * time.Second)
+
 	return &Sqlite{db: db}, nil
 }
 
 func (sqlite *Sqlite) CreateTable() error {
 	const sqlStr = `CREATE TABLE IF NOT EXISTS fortunes(
-		id		INTEGER PRIMARY KEY,
+		id		SERIAL PRIMARY KEY,
 		result  TEXT NOT NULL,
 		text	TEXT NOT NULL
 	);`
@@ -45,7 +57,7 @@ func (sqlite *Sqlite) CreateTable() error {
 }
 
 func (sqlite *Sqlite) GetText(result string) (string, error) {
-	const sqlStr = `SELECT fortunes.text FROM fortunes where result = ? ORDER BY RANDOM() limit 1`
+	const sqlStr = `SELECT fortunes.text FROM fortunes where result = $1 ORDER BY RANDOM() limit 1`
 	row := sqlite.db.QueryRow(sqlStr, result)
 
 	var fortune fortune.Fortune
@@ -58,7 +70,7 @@ func (sqlite *Sqlite) GetText(result string) (string, error) {
 }
 
 func (sqlite *Sqlite) GetFortune(id int) (*fortune.Fortune, error) {
-	const sqlStr = `SELECT * FROM fortunes where id = ?`
+	const sqlStr = `SELECT * FROM fortunes where id = $1`
 	row := sqlite.db.QueryRow(sqlStr, id)
 
 	var fortune fortune.Fortune
@@ -99,7 +111,7 @@ func (sqlite *Sqlite) GetFortuneAll() ([]*fortune.Fortune, error) {
 }
 
 func (sqlite *Sqlite) Updatefortune(f *fortune.Fortune) error {
-	const sqlStr = `UPDATE fortunes SET result = ?, text = ? WHERE id = ?`
+	const sqlStr = `UPDATE fortunes SET result = $1, text = $2 WHERE id = $3`
 	_, err := sqlite.db.Exec(sqlStr, f.Result, f.Text, f.Id)
 	if err != nil {
 		return err
@@ -109,7 +121,7 @@ func (sqlite *Sqlite) Updatefortune(f *fortune.Fortune) error {
 }
 
 func (sqlite *Sqlite) Deletefortune(id int) error {
-	const sqlStr = `DELETE FROM fortunes WHERE id = ?`
+	const sqlStr = `DELETE FROM fortunes WHERE id = $1`
 	_, err := sqlite.db.Exec(sqlStr, id)
 	if err != nil {
 		return err
@@ -119,7 +131,7 @@ func (sqlite *Sqlite) Deletefortune(id int) error {
 }
 
 func (sqlite *Sqlite) Newfortune(fortune *fortune.Fortune) error {
-	const sqlStr = `INSERT INTO fortunes(result, text) VALUES (?,?);`
+	const sqlStr = `INSERT INTO fortunes(result, text) VALUES ($1,$2);`
 	_, err := sqlite.db.Exec(sqlStr, fortune.Result, fortune.Text)
 	if err != nil {
 		return err
