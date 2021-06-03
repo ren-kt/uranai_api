@@ -12,3 +12,20 @@ services:
       - .:/go/src/github.com/ren-kt/uranai_api
     ports:
       - 8080:8080
+  postgres:
+    build:
+      context: .
+      dockerfile: ./docker/postgres/Dockerfile
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: app_db
+    volumes:
+      - ./docker/postgres/init/:/docker-entrypoint-initdb.d
+      - postgres-data:/var/lib/postgres
+    ports:
+      - 5432:5432
+
+volumes:
+  postgres-data:
+    driver: local

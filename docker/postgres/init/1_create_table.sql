@@ -1,0 +1,7 @@
+-- DROP TABLE IF EXISTS fortunes;
+
+CREATE TABLE IF NOT EXISTS fortunes(
+		id		SERIAL PRIMARY KEY,
+		result  TEXT NOT NULL,
+		text	TEXT NOT NULL
+);
