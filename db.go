@@ -2,10 +2,12 @@ package main
 
 import (
 	"database/sql"
+	"log"
+	"sync"
 	"time"
 
-	"github.com/ren-kt/uranai_api/fortune"
 	_ "github.com/lib/pq"
+	"github.com/ren-kt/uranai_api/fortune"
 )
 
 type DB interface {
@@ -16,6 +18,7 @@ type DB interface {
 	Updatefortune(f *fortune.Fortune) error
 	Deletefortune(id int) error
 	Newfortune(fortune *fortune.Fortune) error
+	MultipleNewfortune(entityCh <-chan []string, multipluNum int) <-chan error
 }
 
 type Sqlite struct {
@@ -137,4 +140,35 @@ func (sqlite *Sqlite) Newfortune(fortune *fortune.Fortune) error {
 		return err
 	}
 	return nil
+}
+
+func (sqlite *Sqlite) MultipleNewfortune(lineCh <-chan []string, multipluNum int) <-chan error {
+	errCh := make(chan error)
+
+	stmt, err := sqlite.db.Prepare("INSERT INTO fortunes(result, text) VALUES ($1,$2)")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(multipluNum)
+	for i := 0; i < multipluNum; i++ {
+		go func() {
+			defer wg.Done()
+			for fortune := range lineCh {
+				_, err := stmt.Exec(fortune[0], fortune[1])
+				if err != nil {
+					errCh <- err
+				}
+			}
+		}()
+	}
+
+	go func() {
+		defer stmt.Close()
+		wg.Wait()
+		close(errCh)
+	}()
+
+	return errCh
 }

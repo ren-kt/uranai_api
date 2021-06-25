@@ -28,6 +28,7 @@ func main() {
 	http.HandleFunc("/admin/update/", hs.AdminUpdateHandler)
 	http.HandleFunc("/admin/delete/", hs.AdminDeleteHandler)
 	http.HandleFunc("/admin/upload", hs.AdminUpladHandler)
+	http.HandleFunc("/admin/multiple_upload", hs.AdminMultipleUpladHandler)
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

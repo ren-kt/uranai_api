@@ -15,8 +15,18 @@
 		</form>
 
 		<h2>CSVアップロード</h2>
+		<h4>通常処理</h4>
+		<p>処理時間 {{ .SingleProcessTime }}</p>
 		<form method="post" enctype="multipart/form-data" action="/admin/upload">
 			<input type="file" name="uploaded" accept=".csv" required>
+			<button type="submit">送信する</button>
+		</form>
+		<h4>並行処理</h4>
+		<p>処理時間 {{ .MultipleProcessTime }}</p>
+		<form method="post" enctype="multipart/form-data" action="/admin/multiple_upload">
+			<input type="file" name="uploaded" accept=".csv" required>
+			<label for="multiple">並行数:</label>
+			<input name="multiple" type="number" min="1" max="10" value="1">
 			<button type="submit">送信する</button>
 		</form>
 
@@ -29,7 +39,7 @@
 					<th>Text</th>
 					<th></th>
 				</tr>
-				{{ range . }}
+				{{ range .Fortunes }}
 					<tr>
 						<td>{{ .Id }}</td>
 						<td>{{ .Result }}</td>

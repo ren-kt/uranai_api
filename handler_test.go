@@ -46,6 +46,10 @@ func (d *TestDB) Newfortune(fortune *fortune.Fortune) error {
 	return nil
 }
 
+func (d *TestDB) MultipleNewfortune(entityCh <-chan []string, multipluNum int) <-chan error {
+	return nil
+}
+
 var _ DB = &TestDB{}
 
 type RoundTripFunc func(req *http.Request) *http.Response

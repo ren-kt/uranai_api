@@ -9,7 +9,9 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"sync"
 	"text/template"
+	"time"
 
 	"github.com/ren-kt/uranai_api/fortune"
 )
@@ -53,8 +55,10 @@ func (api *Api) request(req *http.Request) (*http.Response, error) {
 }
 
 type Handlers struct {
-	db  DB
-	api *Api
+	db                  DB
+	api                 *Api
+	singleProcessTime   time.Duration
+	multipleProcessTime time.Duration
 }
 
 func NewHandlers(db DB, api *Api) *Handlers {
@@ -182,7 +186,17 @@ func (hs *Handlers) AdminIndexHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	t.Execute(w, fs)
+	data := struct {
+		Fortunes            []*fortune.Fortune
+		SingleProcessTime   time.Duration
+		MultipleProcessTime time.Duration
+	}{
+		Fortunes:            fs,
+		SingleProcessTime:   hs.singleProcessTime,
+		MultipleProcessTime: hs.multipleProcessTime,
+	}
+
+	t.Execute(w, data)
 }
 
 func (hs *Handlers) AdminCreateHandler(w http.ResponseWriter, r *http.Request) {
@@ -293,7 +307,10 @@ func (hs *Handlers) AdminDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/admin", http.StatusFound)
 }
 
+// 19.4148119s 並列数1  10000row
 func (hs *Handlers) AdminUpladHandler(w http.ResponseWriter, r *http.Request) {
+	t1 := time.Now()
+
 	if r.Method != http.MethodPost {
 		code := http.StatusMethodNotAllowed
 		http.Error(w, http.StatusText(code), code)
@@ -324,6 +341,70 @@ func (hs *Handlers) AdminUpladHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	}
+
+	t2 := time.Now()
+	hs.singleProcessTime = t2.Sub(t1)
+
+	http.Redirect(w, r, "/admin", http.StatusFound)
+}
+
+// 13.2647466s 並列数1  10000row
+// 9.8293747s  並列数2  10000row
+// 7.8937453s  並列数3  10000row
+// 6.2955198s  並列数4  10000row
+// 4.8378591s  並列数10 10000row
+func (hs *Handlers) AdminMultipleUpladHandler(w http.ResponseWriter, r *http.Request) {
+	t1 := time.Now()
+
+	if r.Method != http.MethodPost {
+		code := http.StatusMethodNotAllowed
+		http.Error(w, http.StatusText(code), code)
+		return
+	}
+
+	file, _, err := r.FormFile("uploaded")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	}
+	defer file.Close()
+
+	multipluNum, err := strconv.Atoi(r.FormValue("multiple"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	reader := csv.NewReader(file)
+	_, err = reader.Read()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	lineCh := make(chan []string)
+	m := new(sync.Mutex)
+	go func() {
+		for {
+			line, err := reader.Read()
+			if err == io.EOF {
+				close(lineCh)
+				break
+			} else if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+			}
+			m.Lock()
+			lineCh <- line
+			m.Unlock()
+		}
+	}()
+
+	if err = <-hs.db.MultipleNewfortune(lineCh, multipluNum); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	t2 := time.Now()
+	hs.multipleProcessTime = t2.Sub(t1)
 
 	http.Redirect(w, r, "/admin", http.StatusFound)
 }
