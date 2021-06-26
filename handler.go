@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/ren-kt/uranai_api/fortune"
+	"golang.org/x/sync/errgroup"
 )
 
 const baseURL = "http://localhost:8080"
@@ -382,8 +383,10 @@ func (hs *Handlers) AdminMultipleUpladHandler(w http.ResponseWriter, r *http.Req
 	}
 
 	lineCh := make(chan []string)
+	var eg errgroup.Group
 	m := new(sync.Mutex)
-	go func() {
+	eg.Go(func() error {
+		var returnErr error
 		for {
 			line, err := reader.Read()
 			if err == io.EOF {
@@ -391,17 +394,23 @@ func (hs *Handlers) AdminMultipleUpladHandler(w http.ResponseWriter, r *http.Req
 				break
 			} else if err != nil {
 				close(lineCh)
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
+				returnErr = err
+				break
 			}
 			m.Lock()
 			lineCh <- line
 			m.Unlock()
 		}
-	}()
+		return returnErr
+	})
 
 	if err = <-hs.db.MultipleNewfortune(lineCh, multipluNum); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := eg.Wait(); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
