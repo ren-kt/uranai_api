@@ -6,11 +6,14 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/ren-kt/uranai_api/fortune"
@@ -46,8 +49,26 @@ func (d *TestDB) Newfortune(fortune *fortune.Fortune) error {
 	return nil
 }
 
-func (d *TestDB) MultipleNewfortune(entityCh <-chan []string, multipluNum int) <-chan error {
-	return nil
+func (d *TestDB) MultipleNewfortune(lineCh <-chan []string, multipluNum int) <-chan error {
+	errCh := make(chan error)
+
+	var wg sync.WaitGroup
+	wg.Add(multipluNum)
+	for i := 0; i < multipluNum; i++ {
+		go func() {
+			defer wg.Done()
+			for fortune := range lineCh {
+				_ = fortune
+			}
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		close(errCh)
+	}()
+
+	return errCh
 }
 
 var _ DB = &TestDB{}
@@ -366,6 +387,140 @@ func TestAdminDeleteHandler(t *testing.T) {
 			defer ts.Close()
 
 			resp, err := http.Get(fmt.Sprintf("%s%s%s", ts.URL, "/admin/delete/", tt.id))
+			if err != nil {
+				t.Errorf("unexpected error %s", err)
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != tt.statusCode {
+				t.Errorf("unexpected status code: %d", resp.StatusCode)
+			}
+		})
+	}
+}
+
+func TestAdminUpladHandler(t *testing.T) {
+	cases := map[string]struct {
+		file       string
+		statusCode int
+	}{
+		"success": {file: "fortune_100rows.csv", statusCode: http.StatusOK},
+		"error":   {file: "fortune_10rows_error.csv", statusCode: http.StatusBadRequest},
+	}
+
+	for name, tt := range cases {
+		tt := tt
+		t.Run(name, func(t *testing.T) {
+			td := &TestDB{}
+			hs := NewHandlers(td, nil)
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/admin" {
+					hs.AdminIndexHandler(w, r)
+				} else {
+					hs.AdminUpladHandler(w, r)
+				}
+			}))
+			defer ts.Close()
+
+			file, err := os.Open(tt.file)
+			if err != nil {
+				t.Errorf("unexpected error %s", err)
+			}
+
+			body := &bytes.Buffer{}
+
+			mw := multipart.NewWriter(body)
+
+			fw, err := mw.CreateFormFile("uploaded", tt.file)
+			if err != nil {
+				t.Errorf("unexpected error %s", err)
+			}
+
+			_, err = io.Copy(fw, file)
+			if err != nil {
+				t.Errorf("unexpected error %s", err)
+			}
+
+			contentType := mw.FormDataContentType()
+
+			err = mw.Close()
+			if err != nil {
+				t.Errorf("unexpected error %s", err)
+			}
+
+			resp, err := http.Post(ts.URL, contentType, body)
+			if err != nil {
+				t.Errorf("unexpected error %s", err)
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != tt.statusCode {
+				t.Errorf("unexpected status code: %d", resp.StatusCode)
+			}
+		})
+	}
+}
+
+func TestAdminMultipleUpladHandler(t *testing.T) {
+	cases := map[string]struct {
+		file        string
+		multipluNum string
+		statusCode  int
+	}{
+		"success": {file: "fortune_100rows.csv", multipluNum: "4", statusCode: http.StatusOK},
+		"error":   {file: "fortune_10rows_error.csv", multipluNum: "4", statusCode: http.StatusBadRequest},
+	}
+	for name, tt := range cases {
+		tt := tt
+		t.Run(name, func(t *testing.T) {
+			td := &TestDB{}
+			hs := NewHandlers(td, nil)
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/admin" {
+					hs.AdminIndexHandler(w, r)
+				} else {
+					hs.AdminMultipleUpladHandler(w, r)
+				}
+			}))
+			defer ts.Close()
+
+			file, err := os.Open(tt.file)
+			if err != nil {
+				t.Errorf("unexpected error %s", err)
+			}
+
+			body := &bytes.Buffer{}
+
+			mw := multipart.NewWriter(body)
+
+			fw, err := mw.CreateFormFile("uploaded", tt.file)
+			if err != nil {
+				t.Errorf("unexpected error %s", err)
+			}
+
+			_, err = io.Copy(fw, file)
+			if err != nil {
+				t.Errorf("unexpected error %s", err)
+			}
+
+			fiw, err := mw.CreateFormField("multiple")
+			if err != nil {
+				t.Errorf("unexpected error %s", err)
+			}
+
+			_, err = fiw.Write([]byte(tt.multipluNum))
+			if err != nil {
+				t.Errorf("unexpected error %s", err)
+			}
+
+			contentType := mw.FormDataContentType()
+
+			err = mw.Close()
+			if err != nil {
+				t.Errorf("unexpected error %s", err)
+			}
+
+			resp, err := http.Post(ts.URL, contentType, body)
 			if err != nil {
 				t.Errorf("unexpected error %s", err)
 			}

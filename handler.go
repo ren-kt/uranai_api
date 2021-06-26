@@ -325,14 +325,14 @@ func (hs *Handlers) AdminUpladHandler(w http.ResponseWriter, r *http.Request) {
 
 	reader := csv.NewReader(file)
 
-	header, err := reader.Read()
-	fmt.Println(header)
+	_, err = reader.Read()
 	for {
 		line, err := reader.Read()
 		if err == io.EOF {
 			break
 		} else if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
 
 		fortune := &fortune.Fortune{Result: line[0], Text: line[1]}
@@ -390,7 +390,9 @@ func (hs *Handlers) AdminMultipleUpladHandler(w http.ResponseWriter, r *http.Req
 				close(lineCh)
 				break
 			} else if err != nil {
+				close(lineCh)
 				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
 			}
 			m.Lock()
 			lineCh <- line
